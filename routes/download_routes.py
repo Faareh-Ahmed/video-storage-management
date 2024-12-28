@@ -2,8 +2,9 @@ from flask import Blueprint, request, jsonify, send_file
 from services.user_service import UserService
 from services.track_service import TrackService
 import io
-from flask import Response,send_file
+from flask import Response, send_file
 import os
+
 def download_blueprint(gcs_service, mongo_service, user_service_url):
     download_bp = Blueprint('download', __name__)
 
@@ -12,12 +13,14 @@ def download_blueprint(gcs_service, mongo_service, user_service_url):
         # Get the token from the request headers
         token = request.headers.get('Authorization', '').split(' ')[-1]
         user = UserService.validate_token(token, user_service_url)
-
+        
         if not user:
             return jsonify({"error": "Unauthorized"}), 401
 
         email = user['email']
         username = user['username']
+        
+        filepath = username + '/' + filename
         
         # Check if the user has the file in their storage
         user_storage = mongo_service.find_user_storage(email)
@@ -26,14 +29,16 @@ def download_blueprint(gcs_service, mongo_service, user_service_url):
             return jsonify({"error": "User storage not found"}), 404
 
         # Check if the file is in the user's files list
-        file_record = next((file for file in user_storage.get('files', []) if file['filename'] == filename), None)
+        file_record = next((file for file in user_storage.get('files', []) if file['filename'] == filepath), None)
+        
+        print(file_record)
         
         if not file_record:
             return jsonify({"error": "File not found in user's storage"}), 404
 
         # Download the file from GCS to a temporary path
-        destination_path = f"/tmp/{filename}"  # Example temporary storage location
-        downloaded_file = gcs_service.download_to_disk(filename, destination_path)
+        destination_path = f"{filename}"  # Example temporary storage location
+        downloaded_file = gcs_service.download_to_disk(filepath, destination_path)
         
         if not downloaded_file:
             return jsonify({"error": "File not found in storage"}), 404
