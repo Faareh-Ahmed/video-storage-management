@@ -186,3 +186,20 @@ This microservice provides APIs to manage video storage for authenticated users.
 ---
 For more details or contributions, please open an issue or submit a pull request.
 
+    '''
+        // Basic streaming request
+        fetch('/stream/myfile.mp4', {
+            headers: {
+                'Authorization': 'Bearer your-token-here'
+            }
+        });
+
+        // Range request (e.g., for video seeking)
+        fetch('/stream/myfile.mp4', {
+            headers: {
+                'Authorization': 'Bearer your-token-here',
+                'Range': 'bytes=1000-2000'
+            }
+        });
+    
+    '''

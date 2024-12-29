@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Streaming</title>
+    <style>
+        .video-container {
+            max-width: 800px;
+            margin: 20px auto;
+            text-align: center;
+        }
+        video {
+            width: 100%;
+            background: #000;
+            margin-bottom: 10px;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+        #playButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="video-container">
+        <video id="videoPlayer" controls></video>
+        <button id="playButton">Start Video</button>
+        <div id="status" class="status">Click 'Start Video' to begin streaming</div>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('videoPlayer');
+        const statusElement = document.getElementById('status');
+        const playButton = document.getElementById('playButton');
+        const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTczNTQxNzM4MiwianRpIjoiZGRlN2ZhZDAtY2U3NC00OTIwLWJjYmItZGRiOGZjNmZlNzY0IiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjY3NmZmZGEwNmRhMmFjNGRlMGJlNjUwYyIsIm5iZiI6MTczNTQxNzM4MiwiY3NyZiI6IjYzNzcxYjQ0LTNiYTktNGNmMy1iMWNkLWE3NGQxNTM2OTNmMiIsImV4cCI6MTczNTQyNDU4Mn0.XCegIrkMTYxt9urOxJHX3LHsxJ6d-ekFd3Rxwpds598'; // Replace with actual token
+
+        let mediaSource = null;
+        let sourceBuffer = null;
+        let chunks = [];
+        let isAppending = false;
+        let isFirstChunk = true;
+        let isSourceOpen = false;
+
+        async function initializeMediaSource() {
+            return new Promise((resolve, reject) => {
+                mediaSource = new MediaSource();
+                videoElement.src = URL.createObjectURL(mediaSource);
+                
+                mediaSource.addEventListener('sourceopen', () => {
+                    try {
+                        sourceBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.42E01E,mp4a.40.2"');
+                        isSourceOpen = true;
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+
+                mediaSource.addEventListener('sourceended', () => {
+                    console.log('MediaSource ended');
+                });
+
+                mediaSource.addEventListener('sourceclose', () => {
+                    console.log('MediaSource closed');
+                    isSourceOpen = false;
+                });
+            });
+        }
+
+        async function appendNextChunk() {
+            if (chunks.length > 0 && !isAppending && sourceBuffer && !sourceBuffer.updating && isSourceOpen) {
+                isAppending = true;
+                const chunk = chunks.shift();
+                try {
+                    sourceBuffer.appendBuffer(chunk);
+                    
+                    if (isFirstChunk) {
+                        isFirstChunk = false;
+                        statusElement.textContent = 'First chunk loaded - ready to play';
+                    }
+                } catch (e) {
+                    console.error('Error appending buffer:', e);
+                    statusElement.textContent = `Error appending buffer: ${e.message}`;
+                }
+            }
+        }
+
+        async function startStreaming(filename) {
+            try {
+                // Reset state
+                chunks = [];
+                isAppending = false;
+                isFirstChunk = true;
+                
+                // Initialize MediaSource
+                await initializeMediaSource();
+
+                // Set up source buffer update end handler
+                sourceBuffer.addEventListener('updateend', () => {
+                    isAppending = false;
+                    appendNextChunk();
+                });
+
+                // Fetch the video
+                const response = await fetch(`http://127.0.0.1:5000/stream/video/${filename}`, {
+                    headers: {
+                        'Authorization': token
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const totalSize = parseInt(response.headers.get('Content-Length') || '0');
+                let loadedSize = 0;
+
+                while (true) {
+                    const {value, done} = await reader.read();
+                    if (done) break;
+                    
+                    loadedSize += value.length;
+                    const progress = ((loadedSize / totalSize) * 100).toFixed(2);
+                    statusElement.textContent = `Loading: ${progress}%`;
+
+                    chunks.push(value.buffer);
+                    await appendNextChunk();
+                }
+
+                if (mediaSource.readyState === 'open') {
+                    mediaSource.endOfStream();
+                }
+                statusElement.textContent = 'Loading complete!';
+
+            } catch (error) {
+                console.error('Error:', error);
+                statusElement.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Handle play button click
+        playButton.addEventListener('click', async () => {
+            playButton.disabled = true;
+            statusElement.textContent = 'Initializing stream...';
+            
+            try {
+                await startStreaming('test.mkv'); // Replace with actual filename
+                
+                // Only try to play after user interaction
+                const playPromise = videoElement.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log("Playback error:", error);
+                        statusElement.textContent = 'Click video to play';
+                    });
+                }
+            } catch (error) {
+                console.error('Error starting stream:', error);
+                statusElement.textContent = `Error: ${error.message}`;
+                playButton.disabled = false;
+            }
+        });
+
+        // Event listeners for debugging
+        videoElement.addEventListener('loadstart', () => console.log('Loading started'));
+        videoElement.addEventListener('loadeddata', () => console.log('First frame loaded'));
+        videoElement.addEventListener('canplay', () => console.log('Can start playing'));
+        videoElement.addEventListener('playing', () => console.log('Playback started'));
+        videoElement.addEventListener('waiting', () => console.log('Buffering...'));
+        videoElement.addEventListener('error', (e) => {
+            console.error('Video error:', e);
+            statusElement.textContent = 'Video error occurred';
+        });
+    </script>
+</body>
+</html>
