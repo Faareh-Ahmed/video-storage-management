@@ -1,10 +1,13 @@
 from google.cloud import storage
 from config import CLOUD_PROJECT_ID
 from io import BytesIO
+from google.oauth2 import service_account
+credentials = service_account.Credentials.from_service_account_file(
+    r'C:\Users\HP\Desktop\cloud computing\project\gcp-video-storage-management-service\first-scout-444113-h2-72968e1f4f18.json')
 
 class GCSService:
     def __init__(self, bucket_name):
-        self.client = storage.Client(project=CLOUD_PROJECT_ID)
+        self.client = storage.Client(project=CLOUD_PROJECT_ID, credentials = credentials)
         self.bucket = self.client.bucket(bucket_name)
 
     def upload_file(self, filename, file):
@@ -15,16 +18,13 @@ class GCSService:
         blob = self.bucket.blob(filename)
         blob.delete()
     
-    def stream_file(self, filename):
+    def get_streaming_blob(self, filename):
         """
-        Streams file content from GCS as an in-memory binary stream (BytesIO).
+        Returns a blob object for streaming if it exists
         """
-        blob = self.bucket.blob(filename)
+        blob = self.bucket.get_blob(filename)
         if blob.exists():
-            file_stream = BytesIO()
-            blob.download_to_file(file_stream)
-            file_stream.seek(0)  # Reset stream position to the beginning
-            return file_stream
+            return blob
         return None
 
     def download_to_disk(self, filename, destination_path):
