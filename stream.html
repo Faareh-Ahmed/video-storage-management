@@ -1,185 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Streaming</title>
-    <style>
-        .video-container {
-            max-width: 800px;
-            margin: 20px auto;
-            text-align: center;
-        }
-        video {
-            width: 100%;
-            background: #000;
-            margin-bottom: 10px;
-        }
-        .status {
-            margin: 10px 0;
-            padding: 10px;
-            background: #f0f0f0;
-            border-radius: 4px;
-        }
-        #playButton {
-            padding: 10px 20px;
-            font-size: 16px;
-            margin: 10px;
-            cursor: pointer;
-        }
-    </style>
+<link href="https://unpkg.com/video.js/dist/video-js.css" rel="stylesheet">
+<style>
+  .video-js {
+    width: 600px;
+    height: 600px;
+  }
+</style>
 </head>
 <body>
-    <div class="video-container">
-        <video id="videoPlayer" controls></video>
-        <button id="playButton">Start Video</button>
-        <div id="status" class="status">Click 'Start Video' to begin streaming</div>
-    </div>
+<video-js controls data-setup="{}">
+  <source src="https://storage.googleapis.com/streaming_video_storage_bucket/SalmanSiddiq/mountains.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=901574415199-compute%40developer.gserviceaccount.com%2F20241229%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20241229T145101Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=7946ef2d950402e46dab8ad89220ea46dec9a267db52bd6f987e0aee843ac332c4b2c2959938d7acb1aba4e5554c496994f0551f5eb0961413429161b2b3ebf2e0a8999fac60321de317a054faaa3b574fdbca11469af5843f08ae2c55e3dea00238f1db8fd548c422389fd16d87e12c9afe0134090062c9387a2896040d521c1ee896f8ddf0b57857253dac1f0173aad3192db1ea4404658b03ca4e5239b807c17085e82385093791a45ae7da8898473db1b578ef9d2c3a8198e00a1dc2856555ad879d72d3e3a38a4ebcd3dd3927ed44af6c37dadb32bff8c499a56ae93e9697c68974650611c1a5e1329092a321b985ab824d997a4bcf76c05de5bd7e36c1" type="video/mp4">
+</video-js>
 
-    <script>
-        const videoElement = document.getElementById('videoPlayer');
-        const statusElement = document.getElementById('status');
-        const playButton = document.getElementById('playButton');
-        // const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTczNTQ3MTMwMCwianRpIjoiYTg3ZjkwNmUtYzRjNS00ODlkLTgzZjMtYWM3NzA0OTMxN2VlIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjY3Njg0ZTQ1MjUxMDlmZWYwNjU4ZTRhOCIsIm5iZiI6MTczNTQ3MTMwMCwiY3NyZiI6IjQ1NjBlOGRjLWUzYzYtNDMyNi1iMzYwLWMwNDMxYjRmMTY5OCIsImV4cCI6MTczNTQ3ODUwMH0.xH-Z6Okbgv9yqdMlwdMANAXe5fzsX_sDiiIUP7PSVt0'; // Replace with actual token
-
-        let mediaSource = null;
-        let sourceBuffer = null;
-        let chunks = [];
-        let isAppending = false;
-        let isFirstChunk = true;
-        let isSourceOpen = false;
-
-        async function initializeMediaSource() {
-            return new Promise((resolve, reject) => {
-                mediaSource = new MediaSource();
-                videoElement.src = URL.createObjectURL(mediaSource);
-                
-                mediaSource.addEventListener('sourceopen', () => {
-                    try {
-                        sourceBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.42E01E,mp4a.40.2"');
-                        isSourceOpen = true;
-                        resolve();
-                    } catch (error) {
-                        reject(error);
-                    }
-                });
-
-                mediaSource.addEventListener('sourceended', () => {
-                    console.log('MediaSource ended');
-                });
-
-                mediaSource.addEventListener('sourceclose', () => {
-                    console.log('MediaSource closed');
-                    isSourceOpen = false;
-                });
-            });
-        }
-
-        async function appendNextChunk() {
-            if (chunks.length > 0 && !isAppending && sourceBuffer && !sourceBuffer.updating && isSourceOpen) {
-                isAppending = true;
-                const chunk = chunks.shift();
-                try {
-                    sourceBuffer.appendBuffer(chunk);
-                    
-                    if (isFirstChunk) {
-                        isFirstChunk = false;
-                        statusElement.textContent = 'First chunk loaded - ready to play';
-                    }
-                } catch (e) {
-                    console.error('Error appending buffer:', e);
-                    statusElement.textContent = `Error appending buffer: ${e.message}`;
-                }
-            }
-        }
-
-        async function startStreaming(filename) {
-            try {
-                // Reset state
-                chunks = [];
-                isAppending = false;
-                isFirstChunk = true;
-                
-                // Initialize MediaSource
-                await initializeMediaSource();
-
-                // Set up source buffer update end handler
-                sourceBuffer.addEventListener('updateend', () => {
-                    isAppending = false;
-                    appendNextChunk();
-                });
-
-                // Fetch the video
-                const response = await fetch(`http://127.0.0.1:5000/stream/video/${filename}`, {
-                    headers: {
-                        'Authorization': token
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const reader = response.body.getReader();
-                const totalSize = parseInt(response.headers.get('Content-Length') || '0');
-                let loadedSize = 0;
-
-                while (true) {
-                    const {value, done} = await reader.read();
-                    if (done) break;
-                    
-                    loadedSize += value.length;
-                    const progress = ((loadedSize / totalSize) * 100).toFixed(2);
-                    statusElement.textContent = `Loading: ${progress}%`;
-
-                    chunks.push(value.buffer);
-                    await appendNextChunk();
-                }
-
-                if (mediaSource.readyState === 'open') {
-                    mediaSource.endOfStream();
-                }
-                statusElement.textContent = 'Loading complete!';
-
-            } catch (error) {
-                console.error('Error:', error);
-                statusElement.textContent = `Error: ${error.message}`;
-            }
-        }
-
-        // Handle play button click
-        playButton.addEventListener('click', async () => {
-            playButton.disabled = true;
-            statusElement.textContent = 'Initializing stream...';
-            
-            try {
-                await startStreaming('s85sda528css9-hd_1920_1080_25fps.mp4'); // Replace with actual filename
-                
-                // Only try to play after user interaction
-                const playPromise = videoElement.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => {
-                        console.log("Playback error:", error);
-                        statusElement.textContent = 'Click video to play';
-                    });
-                }
-            } catch (error) {
-                console.error('Error starting stream:', error);
-                statusElement.textContent = `Error: ${error.message}`;
-                playButton.disabled = false;
-            }
-        });
-
-        // Event listeners for debugging
-        videoElement.addEventListener('loadstart', () => console.log('Loading started'));
-        videoElement.addEventListener('loadeddata', () => console.log('First frame loaded'));
-        videoElement.addEventListener('canplay', () => console.log('Can start playing'));
-        videoElement.addEventListener('playing', () => console.log('Playback started'));
-        videoElement.addEventListener('waiting', () => console.log('Buffering...'));
-        videoElement.addEventListener('error', (e) => {
-            console.error('Video error:', e);
-            statusElement.textContent = 'Video error occurred';
-        });
-    </script>
+<script src="https://unpkg.com/video.js/dist/video.min.js"></script>
+<script src="https://unpkg.com/videojs-flash/dist/videojs-flash.min.js"></script>
 </body>
 </html>
