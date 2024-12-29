@@ -7,6 +7,9 @@ import os
 import mimetypes
 
 
+
+
+
 def download_blueprint(gcs_service, mongo_service, user_service_url):
     download_bp = Blueprint('download', __name__)
 
@@ -58,9 +61,6 @@ def download_blueprint(gcs_service, mongo_service, user_service_url):
 
         return response
     
-
-
-
 
     @download_bp.route('/stream/video/<filename>', methods=['GET'])
     def stream_video(filename):
@@ -152,4 +152,36 @@ def download_blueprint(gcs_service, mongo_service, user_service_url):
             headers=headers,
             direct_passthrough=True
         )
+    
+    
+    @download_bp.route('/stream/direct/<filename>',methods=['GET'])
+    def stream_with_url(filename):
+        # Get the token from the request headers
+        token = request.headers.get('Authorization', '').split(' ')[-1]
+        user = UserService.validate_token(token, user_service_url)
+        
+        if not user:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        email = user['email']
+        username = user['username']
+        
+        filepath = username + '/' + filename
+        
+        # Check if the user has the file in their storage
+        user_storage = mongo_service.find_user_storage(email)
+
+        if not user_storage:
+            return jsonify({"error": "User storage not found"}), 404
+
+        # Check if the file is in the user's files list
+        file_record = next((file for file in user_storage.get('files', []) if file['filename'] == filepath), None)
+        
+        if not file_record:
+            return jsonify({"error": "File not found in user's storage"}), 404
+
+        signed_url=gcs_service.generate_download_signed_url_v4(filepath)
+
+        return signed_url
+    
     return download_bp
