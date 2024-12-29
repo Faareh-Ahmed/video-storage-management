@@ -40,7 +40,7 @@
         const videoElement = document.getElementById('videoPlayer');
         const statusElement = document.getElementById('status');
         const playButton = document.getElementById('playButton');
-        const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTczNTQxNzM4MiwianRpIjoiZGRlN2ZhZDAtY2U3NC00OTIwLWJjYmItZGRiOGZjNmZlNzY0IiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjY3NmZmZGEwNmRhMmFjNGRlMGJlNjUwYyIsIm5iZiI6MTczNTQxNzM4MiwiY3NyZiI6IjYzNzcxYjQ0LTNiYTktNGNmMy1iMWNkLWE3NGQxNTM2OTNmMiIsImV4cCI6MTczNTQyNDU4Mn0.XCegIrkMTYxt9urOxJHX3LHsxJ6d-ekFd3Rxwpds598'; // Replace with actual token
+        // const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTczNTQ3MTMwMCwianRpIjoiYTg3ZjkwNmUtYzRjNS00ODlkLTgzZjMtYWM3NzA0OTMxN2VlIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjY3Njg0ZTQ1MjUxMDlmZWYwNjU4ZTRhOCIsIm5iZiI6MTczNTQ3MTMwMCwiY3NyZiI6IjQ1NjBlOGRjLWUzYzYtNDMyNi1iMzYwLWMwNDMxYjRmMTY5OCIsImV4cCI6MTczNTQ3ODUwMH0.xH-Z6Okbgv9yqdMlwdMANAXe5fzsX_sDiiIUP7PSVt0'; // Replace with actual token
 
         let mediaSource = null;
         let sourceBuffer = null;
@@ -153,7 +153,7 @@
             statusElement.textContent = 'Initializing stream...';
             
             try {
-                await startStreaming('test.mkv'); // Replace with actual filename
+                await startStreaming('s85sda528css9-hd_1920_1080_25fps.mp4'); // Replace with actual filename
                 
                 // Only try to play after user interaction
                 const playPromise = videoElement.play();

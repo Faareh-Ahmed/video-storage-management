@@ -72,7 +72,7 @@ def download_blueprint(gcs_service, mongo_service, user_service_url):
             return jsonify({"error": "Unauthorized"}), 401
 
         email = user['email']
-        username = user['username']
+        username = user['username'] 
         
         filepath = username + '/' + filename
         

@@ -3,7 +3,7 @@ from config import CLOUD_PROJECT_ID
 from io import BytesIO
 from google.oauth2 import service_account
 credentials = service_account.Credentials.from_service_account_file(
-    r'C:\Users\HP\Desktop\cloud computing\project\gcp-video-storage-management-service\first-scout-444113-h2-72968e1f4f18.json')
+    r'C:\Users\user\OneDrive\Desktop\5thSemester\CloudComputing\projects\video-storage-management\first-scout-444113-h2-72968e1f4f18.json')
 
 class GCSService:
     def __init__(self, bucket_name):
